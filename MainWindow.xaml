@@ -1,0 +1,126 @@
+﻿<Window x:Class="urlping9.MainWindow" 
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:lc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
+        xmlns:local="clr-namespace:urlping9"
+        Background="{DynamicResource WindowBackgroundBrush}" 
+        BorderBrush="{DynamicResource WindowBackgroundBrush}" 
+        Foreground="{DynamicResource WindowForegroundBrush}"
+        Title="URL Ping" Height="1000" Width="1800">
+    <Grid>
+        <StackPanel>
+            <Grid Margin="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <ListBox x:Name="UrlListBox" Height="160" Grid.Row="0" Grid.Column="0" >
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBox Text="{Binding Url}" ToolTip="URL to send requests to" Width="400" Margin="5"/>
+                                <TextBlock Text="Requests/sec:" ToolTip="Number of requests send each second (asynchronously, this is the request-sending rate, not waiting for response to previously sent request)" VerticalAlignment="Center" Margin="5,0"/>
+                                <TextBox Text="{Binding RequestRate}" ToolTip="Number of requests send each second (asynchronously, this is the request-sending rate, not waiting for response to previously sent request)" Width="50" Margin="5"/>
+                                <Button Content="Remove" Click="OnRemoveUrlButtonClick" Tag="{Binding}" ToolTip="Remove the URL from the list" Margin="5"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                
+                <StackPanel Grid.Row="0" Grid.Column="1" Margin="10,0,0,0">
+                    <ComboBox x:Name="ThemeSelector" Width="120" SelectionChanged="ThemeSelector_SelectionChanged" ToolTip="Choose the color scheme" Margin="0,0,0,10" Padding="5">
+                        <ComboBoxItem Content="Light" />
+                        <ComboBoxItem Content="Dark" />
+                        <ComboBoxItem Content="System" />
+                    </ComboBox>
+                    <Button Content="Add URL" Click="OnAddUrlButtonClick" ToolTip="Add new URL to the list" Margin="0,0,0,10" Padding="5"/>
+                    <Button x:Name="StartTestButton" Content="Start Testing" Click="OnStartTestingButtonClick" ToolTip="Start pinging the specified URLs, collecting stats" Margin="0,0,0,10" Padding="5"/>
+                    <Button x:Name="StopTestButton" Content="Stop Testing" Click="OnStopTestingButtonClick" ToolTip="Stop pinging the URLs" Margin="0,0,0,10" Padding="5"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <TextBlock Text="Refresh Rate (ms):" ToolTip="Stats refresh rate in mS" VerticalAlignment="Center"/>
+                        <TextBox x:Name="RefreshRateTextBox" ToolTip="Stats refresh rate in mS" Text="1000" Width="50" Margin="5,0,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+                
+                <TextBlock x:Name="StatusText" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" 
+                           Height="20" Margin="0,10,0,0" FontWeight="Bold"/>
+            </Grid>
+            
+            <!-- DataGrid for live stats (READ-ONLY) -->
+            <DataGrid x:Name="StatsDataGrid" AutoGenerateColumns="False" Margin="10" Height="150" IsReadOnly="True">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="URL" Binding="{Binding Url}" Width="300"/>
+                    <DataGridTextColumn Header="Total Count " Binding="{Binding TotalCount}" Width="Auto"/>
+                    <DataGridTextColumn Header="Error Count " Binding="{Binding ErrorCount}" Width="Auto"/>
+                    <DataGridTextColumn Header="TPS " Binding="{Binding TPS}" Width="Auto"/>
+                    <DataGridTextColumn Header="Min Latency " Binding="{Binding MinLatency}" Width="Auto"/>
+                    <DataGridTextColumn Header="Max Latency " Binding="{Binding MaxLatency}" Width="Auto"/>
+                    <DataGridTextColumn Header="Avg Latency " Binding="{Binding AvgLatency, StringFormat=F2}" Width="Auto"/>
+                    <DataGridTextColumn Header="p50 Latency " Binding="{Binding p50Latency, StringFormat=F2}" Width="Auto"/>
+                    <DataGridTextColumn Header="p90 Latency " Binding="{Binding p90Latency, StringFormat=F2}" Width="Auto"/>
+                    <DataGridTextColumn Header="p99 Latency " Binding="{Binding p99Latency, StringFormat=F2}" Width="Auto"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Metric selector for chart -->
+            <StackPanel Orientation="Horizontal" Margin="10,0,10,5">
+                <TextBlock Text="Chart Metric:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <ComboBox x:Name="MetricSelector" Width="200" SelectionChanged="OnMetricSelectionChanged">
+                    <ComboBoxItem Content="Sliding 1s Avg Latency" Tag="Avg1Sec" IsSelected="True"/>
+                    <ComboBoxItem Content="Sliding 1s Min Latency" Tag="Min1Sec"/>
+                    <ComboBoxItem Content="Sliding 1s Max Latency" Tag="Max1Sec"/>
+                    <ComboBoxItem Content="Sliding 1s p50 Latency" Tag="P50_1Sec"/>
+                    <ComboBoxItem Content="Sliding 1s p90 Latency" Tag="P90_1Sec"/>
+                    <ComboBoxItem Content="Sliding 1s p99 Latency" Tag="P99_1Sec"/>
+                    <ComboBoxItem Content="TPS" Tag="RequestsPerSecond"/>
+                    <ComboBoxItem Content="Errors per Second" Tag="ErrorsPerSecond"/>
+                </ComboBox>
+            </StackPanel>
+
+            <!-- Chart for metrics -->
+            <Grid Margin="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+    
+                <lc:CartesianChart x:Name="LatencyChart" Grid.Column="0" Height="500">
+                    <lc:CartesianChart.AxisX>
+                        <lc:Axis Title="Time" />
+                    </lc:CartesianChart.AxisX>
+                    <lc:CartesianChart.AxisY>
+                        <lc:Axis Title="Value" x:Name="ChartAxisY" />
+                    </lc:CartesianChart.AxisY>
+                </lc:CartesianChart>
+    
+                <!-- Custom Legend with Checkboxes -->
+                <StackPanel Grid.Column="1" Margin="10,0,0,0" x:Name="LegendPanel">
+                    <TextBlock Text="Series Visibility" FontWeight="Bold" Margin="0,0,0,10"/>
+                    <ItemsControl x:Name="LegendItemsControl">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="0,5">
+                                    <CheckBox IsChecked="{Binding Visible}" 
+                                              Checked="OnSeriesVisibilityChanged"
+                                              Unchecked="OnSeriesVisibilityChanged">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Rectangle Width="20" Height="3" Margin="0,0,5,0"
+                                                       Fill="{Binding SeriesColor}"/>
+                                            <TextBlock Text="{Binding Title}"/>
+                                        </StackPanel>
+                                    </CheckBox>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </Grid>
+    
+</Window>
