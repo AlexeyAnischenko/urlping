@@ -371,52 +371,69 @@ private void AddChartSeries(UrlTestItem item)
         private async Task StartTesting(UrlTestItem urlTestItem, CancellationToken cancellationToken)
         {
             var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
+            var requestIntervalMs = (int)(1000.0 / urlTestItem.RequestRate); // Interval in milliseconds
+            var nextRequestTime = DateTime.Now;
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                try
-                {
-                    var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                    var startTimestamp = DateTime.Now;
-                    var response = await httpClient.GetAsync(urlTestItem.Url, cancellationToken);
-                    stopwatch.Stop();
+                // Calculate time until next request should be sent
+                var now = DateTime.Now;
+                var delay = nextRequestTime > now ? (nextRequestTime - now).TotalMilliseconds : 0;
 
-                    // Calculate latency in milliseconds
-                    long latency = stopwatch.ElapsedMilliseconds;
-
-                    // Handle successful request based on code
-                    bool isSuccess = response.IsSuccessStatusCode;
-
-                    // Update the stats in the UI thread
-                    Application.Current.Dispatcher.Invoke(() => { urlTestItem.AddLatencySample(startTimestamp, latency, isSuccess); });
-                }
-                catch (TaskCanceledException)
-                {
-                    // Expected when cancellation is requested
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    // Update error count in the UI thread
-                    Application.Current.Dispatcher.Invoke(() => { urlTestItem.AddErrorSample(); });
-                }
-
-                // Wait for the next request based on the configured rate
-                if (!cancellationToken.IsCancellationRequested)
+                // Wait until it's time to send the next request
+                if (delay > 0)
                 {
                     try
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(1.0 / urlTestItem.RequestRate), cancellationToken);
+                        await Task.Delay((int)delay, cancellationToken);
                     }
                     catch (TaskCanceledException)
                     {
-                        // Expected when cancellation is requested
-                        break;
+                        break; // Expected when cancellation is requested
                     }
                 }
+
+                // Update next request time for consistent pacing
+                nextRequestTime = DateTime.Now.AddMilliseconds(requestIntervalMs);
+        
+                // Send the request without awaiting its completion
+                var startTimestamp = DateTime.Now;
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        
+                // Launch request asynchronously and continue execution
+                _ = SendRequestAsync(httpClient, urlTestItem, startTimestamp, stopwatch, cancellationToken);
             }
         }
 
+        private async Task SendRequestAsync(HttpClient httpClient, UrlTestItem urlTestItem, DateTime startTimestamp, 
+            System.Diagnostics.Stopwatch stopwatch, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var response = await httpClient.GetAsync(urlTestItem.Url, cancellationToken);
+                stopwatch.Stop();
+
+                // Calculate latency in milliseconds
+                long latency = stopwatch.ElapsedMilliseconds;
+
+                // Handle successful request based on code
+                bool isSuccess = response.IsSuccessStatusCode;
+
+                // Update the stats in the UI thread
+                Application.Current.Dispatcher.Invoke(() => { urlTestItem.AddLatencySample(startTimestamp, latency, isSuccess); });
+            }
+            catch (TaskCanceledException)
+            {
+                // Expected when cancellation is requested
+            }
+            catch (Exception ex)
+            {
+                // Update error count in the UI thread
+                Application.Current.Dispatcher.Invoke(() => { urlTestItem.AddErrorSample(); });
+            }
+        }
+
+        
         private void RefreshUI(object? sender, EventArgs? e)
         {
             foreach (var item in _urls)
