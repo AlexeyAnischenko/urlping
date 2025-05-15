@@ -1,13 +1,7 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Globalization;
-using System.Linq;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -144,8 +138,8 @@ namespace urlping9
         private void RegenerateChartData()
         {
             // Only proceed if we're in a test
-            //if (_cancellationTokenSource == null || _cancellationTokenSource.IsCancellationRequested)
-            //    return;
+            // if (_cancellationTokenSource == null || _cancellationTokenSource.IsCancellationRequested)
+            //     return;
 
             foreach (var item in _urls)
             {
@@ -433,7 +427,7 @@ namespace urlping9
                 bool isSuccess = response.IsSuccessStatusCode;
 
                 // Update the stats in the UI thread
-                Application.Current.Dispatcher.Invoke(() => { urlTestItem.AddLatencySample(startTimestamp, latency, isSuccess); });
+                _ = Application.Current.Dispatcher.BeginInvoke(() => { urlTestItem.AddLatencySample(startTimestamp, latency, isSuccess); });
             }
             catch (TaskCanceledException)
             {
@@ -442,7 +436,7 @@ namespace urlping9
             catch (Exception ex)
             {
                 // Update error count in the UI thread
-                Application.Current.Dispatcher.Invoke(() => { urlTestItem.AddErrorSample(); });
+                _ = Application.Current.Dispatcher.BeginInvoke(() => { urlTestItem.AddErrorSample(); });
             }
         }
         private void RefreshUI(object? sender, EventArgs? e)
