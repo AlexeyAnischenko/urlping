@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -164,7 +164,7 @@ namespace urlping9
             }
         }
 
-       private void OnAddUrlButtonClick(object sender, RoutedEventArgs e)
+        private void OnAddUrlButtonClick(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -202,86 +202,86 @@ namespace urlping9
                 }
             }
         }
-public class LegendItem : INotifyPropertyChanged
-{
-    private bool _visible = true;
-    public string Title { get; set; }
-    public Brush SeriesColor { get; set; }
-    public LineSeries Series { get; set; }
+        public class LegendItem : INotifyPropertyChanged
+        {
+            private bool _visible = true;
+            public string Title { get; set; }
+            public Brush SeriesColor { get; set; }
+            public LineSeries Series { get; set; }
     
-    public bool Visible
-    {
-        get => _visible;
-        set
-        {
-            _visible = value;
-            OnPropertyChanged();
-            Series.Visibility = value ? Visibility.Visible : Visibility.Hidden;
-        }
-    }
+            public bool Visible
+            {
+                get => _visible;
+                set
+                {
+                    _visible = value;
+                    OnPropertyChanged();
+                    Series.Visibility = value ? Visibility.Visible : Visibility.Hidden;
+                }
+            }
 
-    public event PropertyChangedEventHandler PropertyChanged;
-    protected void OnPropertyChanged([CallerMemberName] string name = null)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-    }
-}
-
-private ObservableCollection<LegendItem> _legendItems = new ObservableCollection<LegendItem>();
-
-private void InitializeLegend()
-{
-    LegendItemsControl.ItemsSource = _legendItems;
-}
-
-private void OnSeriesVisibilityChanged(object sender, RoutedEventArgs e)
-{
-    // The binding will automatically update the series visibility
-}
-
-private void AddChartSeries(UrlTestItem item)
-{
-    try
-    {
-        string urlDomain;
-        try
-        {
-            urlDomain = new Uri(item.Url).Host;
-        }
-        catch
-        {
-            urlDomain = item.Url;
+            public event PropertyChangedEventHandler PropertyChanged;
+            protected void OnPropertyChanged([CallerMemberName] string name = null)
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+            }
         }
 
-        var seriesColor = GetNextBrush(LatencyChart.Series.Count);
-        var series = new LineSeries
-        {
-            Title = urlDomain,
-            Values = new ChartValues<double>(),
-            PointGeometry = null,
-            LineSmoothness = 0,
-            Stroke = seriesColor,
-            Fill = new SolidColorBrush(Colors.Transparent),
-            Visibility = Visibility.Visible
-        };
+        private ObservableCollection<LegendItem> _legendItems = new ObservableCollection<LegendItem>();
 
-        LatencyChart.Series.Add(series);
-        item.ChartSeriesIndex = LatencyChart.Series.Count - 1;
-
-        // Add legend item
-        _legendItems.Add(new LegendItem
+        private void InitializeLegend()
         {
-            Title = urlDomain,
-            SeriesColor = seriesColor,
-            Series = series,
-            Visible = true
-        });
-    }
-    catch (Exception ex)
-    {
-        StatusText.Text = $"Error adding chart series: {ex.Message}";
-    }
-}
+            LegendItemsControl.ItemsSource = _legendItems;
+        }
+
+        private void OnSeriesVisibilityChanged(object sender, RoutedEventArgs e)
+        {
+            // The binding will automatically update the series visibility
+        }
+
+        private void AddChartSeries(UrlTestItem item)
+        {
+            try
+            {
+                string urlDomain;
+                try
+                {
+                    urlDomain = new Uri(item.Url).Host;
+                }
+                catch
+                {
+                    urlDomain = item.Url;
+                }
+
+                var seriesColor = GetNextBrush(LatencyChart.Series.Count);
+                var series = new LineSeries
+                {
+                    Title = urlDomain,
+                    Values = new ChartValues<double>(),
+                    PointGeometry = null,
+                    LineSmoothness = 0,
+                    Stroke = seriesColor,
+                    Fill = new SolidColorBrush(Colors.Transparent),
+                    Visibility = Visibility.Visible
+                };
+
+                LatencyChart.Series.Add(series);
+                item.ChartSeriesIndex = LatencyChart.Series.Count - 1;
+
+                // Add legend item
+                _legendItems.Add(new LegendItem
+                {
+                    Title = urlDomain,
+                    SeriesColor = seriesColor,
+                    Series = series,
+                    Visible = true
+                });
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = $"Error adding chart series: {ex.Message}";
+            }
+        }
 
 
         private SolidColorBrush GetNextBrush(int index)
@@ -294,8 +294,21 @@ private void AddChartSeries(UrlTestItem item)
         {
             if (_urls.Count == 0)
             {
-                StatusText.Text = "Please add at least one URL to test.";
+                StatusText.Text = "Please add at least one URL to test, test not started.";
                 return;
+            }
+            
+            // Validate URLs and request rates before starting
+            foreach (var item in _urls)
+            {
+                if (item.RequestRate < 1 || 
+                    item.RequestRate > 1000 || 
+                    string.IsNullOrEmpty(item.Url) || 
+                    !item.Url.StartsWith("http",StringComparison.OrdinalIgnoreCase) )
+                {
+                    StatusText.Text = "Invalid non HTTP/HTTPS url, or request rate out of [1,1000] range, test not started";
+                    return;
+                }
             }
 
             // Parse UI settings
@@ -432,8 +445,6 @@ private void AddChartSeries(UrlTestItem item)
                 Application.Current.Dispatcher.Invoke(() => { urlTestItem.AddErrorSample(); });
             }
         }
-
-        
         private void RefreshUI(object? sender, EventArgs? e)
         {
             foreach (var item in _urls)
@@ -482,7 +493,7 @@ private void AddChartSeries(UrlTestItem item)
         public string Url
         {
             get => _url;
-            set => SetField(ref _url, value);
+            set => SetField(ref _url, value.Trim());
         }
 
         public bool Visible
@@ -494,7 +505,23 @@ private void AddChartSeries(UrlTestItem item)
         public int RequestRate
         {
             get => _requestRate;
-            set => SetField(ref _requestRate, value);
+            set
+            {
+                //validating the input values range, resetting if out of range
+                switch (value)
+                {
+                    case < 1:
+                        SetField(ref _requestRate, 1);
+                        break;
+                    case > 1000:
+                        SetField(ref _requestRate, 1000);
+                        break;
+                    default:
+                        SetField(ref _requestRate, value);
+                        break;
+                }
+                OnPropertyChanged(nameof(RequestRate)); // Notify validation system
+            }
         }
 
         public double TPS
