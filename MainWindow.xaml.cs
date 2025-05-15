@@ -144,8 +144,8 @@ namespace urlping9
         private void RegenerateChartData()
         {
             // Only proceed if we're in a test
-            if (_cancellationTokenSource == null || _cancellationTokenSource.IsCancellationRequested)
-                return;
+            //if (_cancellationTokenSource == null || _cancellationTokenSource.IsCancellationRequested)
+            //    return;
 
             foreach (var item in _urls)
             {
